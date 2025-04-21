@@ -293,9 +293,10 @@ bool pico_hx711_calibrate_slope_unsafe(struct PicoHX711 *hx,
     calib->slope = weight / (raw_mean - calib->offset);
 
     float diff = raw_mean - calib->offset;
-    float body = (weight / diff) * (sq(calib->offset_e) - sq(raw_stdev)) + sq(weight_error);
+    float diff_sq = sq(diff);
+    float body = (weight / diff_sq) * (sq(calib->offset_e) - sq(raw_stdev)) + sq(weight_error);
     body = abs(body); // this shouldn't be necessary
-    calib->slope_e = sqrt(body / diff);
+    calib->slope_e = sqrt(body / diff_sq);
     calib->set_slope = true;
 
     return true;

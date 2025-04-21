@@ -8,7 +8,7 @@
 //     50   // 80 SPS
 // };
 
-bool pico_hx711_is_populated(const struct PicoHX711Calibration *calib)
+bool pico_hx711_is_calibration_populated(const struct PicoHX711Calibration *calib)
 {
     return calib->set_offset && calib->set_slope;
 }
@@ -219,6 +219,20 @@ bool pico_hx711_read_raw_stats(struct PicoHX711 *hx, uint32_t n, float *mean,
 }
 
 #define sq(x) ((x) * (x))
+bool pico_hx711_raw_to_calib(struct PicoHX711Calibration *calib, float raw_mean, float raw_stdev,
+                             float *mean, float *stdev)
+{
+    if (!pico_hx711_is_calibration_populated(calib))
+        return false;
+
+    *mean = calib->slope * (raw_mean - calib->offset);
+    float r_minus_o = raw_mean - calib->offset;
+    *stdev = sqrt(sq(r_minus_o) * sq(calib->slope_e) +
+                  sq(calib->slope) * (sq(raw_stdev) + sq(calib->offset_e)));
+
+    return true;
+}
+
 bool pico_hx711_read_calib_stats_unsafe(struct PicoHX711 *hx,
                                         struct PicoHX711Calibration *calib,
                                         uint32_t n, float *mean, float *stdev,
@@ -228,12 +242,7 @@ bool pico_hx711_read_calib_stats_unsafe(struct PicoHX711 *hx,
     if (!pico_hx711_read_raw_stats_unsafe(hx, n, &raw_mean, &raw_stdev, resulting_n, timeout_ms))
         return false;
 
-    *mean = calib->slope * (raw_mean - calib->offset);
-    float r_minus_o = raw_mean - calib->offset;
-    *stdev = sqrt(sq(r_minus_o) * sq(calib->slope_e) +
-                  sq(calib->slope) * (sq(raw_stdev) + sq(calib->offset_e)));
-
-    return true;
+    return pico_hx711_raw_to_calib(calib, raw_mean, raw_stdev, mean, stdev);
 }
 
 bool pico_hx711_read_calib_stats(struct PicoHX711 *hx,

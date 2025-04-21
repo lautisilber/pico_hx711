@@ -43,7 +43,7 @@ extern "C"
         bool set_offset, set_slope;
     };
 
-    extern bool pico_hx711_is_populated(const struct PicoHX711Calibration *calib);
+    extern bool pico_hx711_is_calibration_populated(const struct PicoHX711Calibration *calib);
 
     extern void pico_hx711_begin(struct PicoHX711 *hx, uint8_t pin_clock, uint8_t pin_data,
                                  enum PicoHX711Gain gain, enum PicoHX711Rate rate);
@@ -70,6 +70,10 @@ extern "C"
                                                  uint32_t timeout_ms);
     extern bool pico_hx711_read_raw_stats(struct PicoHX711 *hx, uint32_t n, float *mean,
                                           float *stdev, uint32_t *resulting_n, uint32_t timeout_ms);
+
+    extern bool pico_hx711_raw_to_calib(struct PicoHX711Calibration *calib,
+                                        float raw_mean, float raw_stdev,
+                                        float *mean, float *stdev);
 
     extern bool pico_hx711_read_calib_stats_unsafe(struct PicoHX711 *hx,
                                                    struct PicoHX711Calibration *calib,

@@ -218,7 +218,6 @@ bool pico_hx711_read_raw_stats(struct PicoHX711 *hx, uint32_t n, float *mean,
     return res;
 }
 
-#include <stdio.h>
 #define sq(x) ((x) * (x))
 bool pico_hx711_read_calib_stats_unsafe(struct PicoHX711 *hx,
                                         struct PicoHX711Calibration *calib,

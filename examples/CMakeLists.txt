@@ -1,10 +1,13 @@
-add_executable(read_sync_example)
 
-target_sources(read_sync_example PRIVATE read_sync_example.c)
+foreach(PN read_sync_simple read_sync_stats)
+    add_executable(${PN})
 
-target_link_libraries(read_sync_example PRIVATE pico_stdlib PicoHX711)
+    target_sources(${PN} PRIVATE "${PN}.c")
 
-# enable usb output, disable uart output
-pico_enable_stdio_usb(read_sync_example 1)
-pico_enable_stdio_uart(read_sync_example 0)
-pico_add_extra_outputs(read_sync_example)
+    target_link_libraries(${PN} PRIVATE pico_stdlib PicoHX711)
+
+    # enable usb output, disable uart output
+    pico_enable_stdio_usb(${PN} 1)
+    pico_enable_stdio_uart(${PN} 0)
+    pico_add_extra_outputs(${PN})
+endforeach()

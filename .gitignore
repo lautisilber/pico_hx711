@@ -1,6 +1,7 @@
 build/
 pico-sdk/
 pico_sdk_import.cmake
+Makefile
 
 .DS_Store
 

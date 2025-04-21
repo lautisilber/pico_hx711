@@ -38,6 +38,14 @@ extern "C"
         critical_section_t cs;
     };
 
+    struct PicoHX711Calibration
+    {
+        float offset, slope, offset_e, slope_e;
+        bool set_offset, set_slope;
+    };
+
+    extern bool pico_hx711_is_populated(const struct PicoHX711Calibration *calib);
+
     extern void pico_hx711_begin(struct PicoHX711 *hx, uint8_t pin_clock, uint8_t pin_data,
                                  enum PicoHX711Gain gain, enum PicoHX711Rate rate);
 
@@ -57,6 +65,12 @@ extern "C"
 
     extern bool pico_hx711_read_raw_single_unsafe(struct PicoHX711 *hx, int32_t *raw, uint32_t timeout_ms);
     extern bool pico_hx711_read_raw_single(struct PicoHX711 *hx, int32_t *raw, uint32_t timeout_ms);
+
+    extern bool pico_hx711_read_raw_stats_unsafe(struct PicoHX711 *hx, uint32_t n, float *mean,
+                                                 float *stdev, uint32_t *resulting_n,
+                                                 uint32_t timeout_ms);
+    extern bool pico_hx711_read_raw_stats(struct PicoHX711 *hx, uint32_t n, float *mean,
+                                          float *stdev, uint32_t *resulting_n, uint32_t timeout_ms);
 
 #ifdef __cplusplus
 }

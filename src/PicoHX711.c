@@ -117,18 +117,21 @@ static inline void pico_hx711_pulse(struct PicoHX711 *hx)
 
 #define HX711_MIN_VALUE INT32_C(-0x800000) // −8,388,608
 #define HX711_MAX_VALUE INT32_C(0x7fffff)  // 8,388,607
-int32_t hx711_get_twos_comp(const uint32_t v)
+static inline int32_t _hx711_get_twos_comp(const uint32_t v)
 {
     return (int32_t)(-(v & +HX711_MIN_VALUE)) +
            (int32_t)(v & HX711_MAX_VALUE);
 }
 
-#include <stdio.h>
+int32_t hx711_get_twos_comp(const uint32_t v)
+{
+    return _hx711_get_twos_comp(v);
+}
 
 #define HX711_READ_BITS UINT8_C(24)
 bool pico_hx711_read_raw_single_unsafe(struct PicoHX711 *hx, int32_t *raw, uint32_t timeout_ms)
 {
-    uint32_t data;
+    uint32_t data = 0; // Don't forget to initialize this variable to 0!!!!!
 
     pico_hx711_power_on_unsafe(hx);
 
@@ -154,8 +157,7 @@ bool pico_hx711_read_raw_single_unsafe(struct PicoHX711 *hx, int32_t *raw, uint3
     critical_section_exit(&hx->cs);
 
     // to two's compliment
-    *raw = hx711_get_twos_comp(data);
-    // printf("raw: %li\n", *raw);
+    *raw = _hx711_get_twos_comp(data);
     return true;
 }
 
@@ -173,6 +175,12 @@ bool pico_hx711_read_raw_stats_unsafe(struct PicoHX711 *hx, uint32_t n, float *m
                                       float *stdev, uint32_t *resulting_n,
                                       uint32_t timeout_ms)
 {
+    // It is safe to cast the int32_t to floats because the int32_t originate 
+    // from the hx711 and it produces numbers of 32 bits. Therefore, because
+    // the float's mantissa is 24 bits wide, a number produced by the hx711
+    // will always be able to be represented by a float, even if it is
+    // stored in a int32_t
+
     // check if n == 0 or n == 1
     if (n == 0)
     return false;
@@ -181,9 +189,7 @@ bool pico_hx711_read_raw_stats_unsafe(struct PicoHX711 *hx, uint32_t n, float *m
         int32_t raw;
         if (!pico_hx711_read_raw_single_unsafe(hx, &raw, timeout_ms))
             return false;
-        float fraw = (float)raw;
-        // printf("%f - %li\n", fraw, raw);
-        *mean = fraw;
+        *mean = (float)raw;
         *stdev = 0.0;
         *resulting_n = 1;
         return true;
@@ -196,9 +202,7 @@ bool pico_hx711_read_raw_stats_unsafe(struct PicoHX711 *hx, uint32_t n, float *m
         int32_t raw;
         if (!pico_hx711_read_raw_single_unsafe(hx, &raw, timeout_ms))
             continue;
-        float fraw = (float)raw;
-        // printf("%f - %li\n", fraw, raw);
-        welfords_update(&agg, fraw);
+        welfords_update(&agg, (float)raw);
     }
 
     if (!welfords_finalize(&agg, mean, stdev))

@@ -35,19 +35,10 @@ int main()
     float mean, stdev;
     uint32_t resulting_n;
     int32_t raw;
-    const uint32_t n = 1;
+    const uint32_t n = 20;
     bool s;
     for (;;)
     {
-        printf("hx711 raw: ");
-        s = pico_hx711_read_raw_single(&hx, &raw, 1000);
-        printf("(%s) ", (s ? "true" : "false"));
-        if (s)
-        {
-            printf("%li", raw);
-        }
-        printf("\n");
-        
         printf("hx711 stats: ");
         s = pico_hx711_read_raw_stats(&hx, n, &mean, &stdev, &resulting_n, 1000);
         printf("(%s) ", (s ? "true" : "false"));

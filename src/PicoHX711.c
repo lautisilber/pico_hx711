@@ -1,4 +1,7 @@
 #include "PicoHX711.h"
+#include <math.h>
+#include "welfords.h"
+#include "utils.h"
 
 // const uint16_t HX711_SETTLING_TIMES_MS[] = {
 //     400, // 10 SPS
@@ -13,24 +16,23 @@ bool pico_hx711_is_populated(const struct PicoHX711Calibration *calib)
 void pico_hx711_begin(struct PicoHX711 *hx, uint8_t pin_clock, uint8_t pin_data,
                       enum PicoHX711Gain gain, enum PicoHX711Rate rate)
 {
-    critical_section_init(&hx->cs);
     // if (!mutex_is_initialized(&hx->mux))
     mutex_init(&hx->mux);
 
-    mutex_enter_blocking(&hx->mux);
+    HX711_MUTEX_BLOCK(hx->mux,
 
-    hx->pin_clock = pin_clock;
-    hx->pin_data = pin_data;
-    hx->gain = gain;
-    hx->rate = rate;
+                      hx->pin_clock = pin_clock;
+                      hx->pin_data = pin_data;
+                      hx->gain = gain;
+                      hx->rate = rate;
 
-    gpio_init(hx->pin_clock);
-    gpio_set_dir(hx->pin_clock, GPIO_OUT);
+                      gpio_init(hx->pin_clock);
+                      gpio_set_dir(hx->pin_clock, GPIO_OUT);
 
-    gpio_init(hx->pin_data);
-    gpio_set_dir(hx->pin_data, GPIO_IN);
+                      gpio_init(hx->pin_data);
+                      gpio_set_dir(hx->pin_data, GPIO_IN);
 
-    mutex_exit(&hx->mux);
+    );
 }
 
 bool pico_hx711_is_ready_unsafe(struct PicoHX711 *hx)
@@ -40,9 +42,9 @@ bool pico_hx711_is_ready_unsafe(struct PicoHX711 *hx)
 
 bool pico_hx711_is_ready(struct PicoHX711 *hx)
 {
-    mutex_enter_blocking(&hx->mux);
-    bool res = pico_hx711_is_ready_unsafe(hx);
-    mutex_exit(&hx->mux);
+    bool res;
+    HX711_MUTEX_BLOCK(hx->mux,
+                      res = pico_hx711_is_ready_unsafe(hx););
     return res;
 }
 
@@ -54,9 +56,8 @@ void pico_hx711_wait_ready_unsafe(struct PicoHX711 *hx)
 
 void pico_hx711_wait_ready(struct PicoHX711 *hx)
 {
-    mutex_enter_blocking(&hx->mux);
-    pico_hx711_wait_ready_unsafe(hx);
-    mutex_exit(&hx->mux);
+    HX711_MUTEX_BLOCK(hx->mux,
+                      pico_hx711_wait_ready_unsafe(hx););
 }
 
 bool pico_hx711_ready_timeout_unsafe(struct PicoHX711 *hx, uint32_t timeout_ms)
@@ -73,9 +74,9 @@ bool pico_hx711_ready_timeout_unsafe(struct PicoHX711 *hx, uint32_t timeout_ms)
 
 bool pico_hx711_ready_timeout(struct PicoHX711 *hx, uint32_t timeout_ms)
 {
-    mutex_enter_blocking(&hx->mux);
-    bool res = pico_hx711_ready_timeout_unsafe(hx, timeout_ms);
-    mutex_exit(&hx->mux);
+    bool res;
+    HX711_MUTEX_BLOCK(hx->mux,
+                      res = pico_hx711_ready_timeout_unsafe(hx, timeout_ms););
     return res;
 }
 
@@ -86,9 +87,8 @@ void pico_hx711_power_on_unsafe(struct PicoHX711 *hx)
 
 void pico_hx711_power_on(struct PicoHX711 *hx)
 {
-    mutex_enter_blocking(&hx->mux);
-    pico_hx711_power_on_unsafe(hx);
-    mutex_exit(&hx->mux);
+    HX711_MUTEX_BLOCK(hx->mux,
+                      pico_hx711_power_on_unsafe(hx););
 }
 
 void pico_hx711_power_off_unsafe(struct PicoHX711 *hx, bool wait_until_power_off)
@@ -102,9 +102,8 @@ void pico_hx711_power_off_unsafe(struct PicoHX711 *hx, bool wait_until_power_off
 
 void pico_hx711_power_off(struct PicoHX711 *hx, bool wait_until_power_off)
 {
-    mutex_enter_blocking(&hx->mux);
-    pico_hx711_power_off_unsafe(hx, wait_until_power_off);
-    mutex_exit(&hx->mux);
+    HX711_MUTEX_BLOCK(hx->mux,
+                      pico_hx711_power_off_unsafe(hx, wait_until_power_off););
 }
 
 static inline void pico_hx711_pulse(struct PicoHX711 *hx)
@@ -144,17 +143,18 @@ bool pico_hx711_read_raw_single_unsafe(struct PicoHX711 *hx, int32_t *raw, uint3
         pico_hx711_wait_ready_unsafe(hx);
 
     // read
-    critical_section_enter_blocking(&hx->cs);
-    for (uint8_t i = 0; i < HX711_READ_BITS; ++i)
-    {
-        pico_hx711_pulse(hx);
-        data |= gpio_get(hx->pin_data) << ((HX711_READ_BITS - 1) - i);
-    }
+    HX711_INTERRUPTS_OFF_BLOCK(
 
-    // set gain
-    for (uint8_t i = 0; i < hx->gain; ++i)
-        pico_hx711_pulse(hx);
-    critical_section_exit(&hx->cs);
+        for (uint8_t i = 0; i < HX711_READ_BITS; ++i) {
+            pico_hx711_pulse(hx);
+            data |= gpio_get(hx->pin_data) << ((HX711_READ_BITS - 1) - i);
+        }
+
+        // set gain
+        for (uint8_t i = 0; i < hx->gain; ++i)
+            pico_hx711_pulse(hx);
+
+    );
 
     // to two's compliment
     *raw = _hx711_get_twos_comp(data);
@@ -163,19 +163,17 @@ bool pico_hx711_read_raw_single_unsafe(struct PicoHX711 *hx, int32_t *raw, uint3
 
 bool pico_hx711_read_raw_single(struct PicoHX711 *hx, int32_t *raw, uint32_t timeout_ms)
 {
-    mutex_enter_blocking(&hx->mux);
-    bool res = pico_hx711_read_raw_single_unsafe(hx, raw, timeout_ms);
-    mutex_exit(&hx->mux);
+    bool res;
+    HX711_MUTEX_BLOCK(hx->mux,
+                      res = pico_hx711_read_raw_single_unsafe(hx, raw, timeout_ms););
     return res;
 }
-
-#include "welfords.h"
 
 bool pico_hx711_read_raw_stats_unsafe(struct PicoHX711 *hx, uint32_t n, float *mean,
                                       float *stdev, uint32_t *resulting_n,
                                       uint32_t timeout_ms)
 {
-    // It is safe to cast the int32_t to floats because the int32_t originate 
+    // It is safe to cast the int32_t to floats because the int32_t originate
     // from the hx711 and it produces numbers of 32 bits. Therefore, because
     // the float's mantissa is 24 bits wide, a number produced by the hx711
     // will always be able to be represented by a float, even if it is
@@ -183,7 +181,7 @@ bool pico_hx711_read_raw_stats_unsafe(struct PicoHX711 *hx, uint32_t n, float *m
 
     // check if n == 0 or n == 1
     if (n == 0)
-    return false;
+        return false;
     else if (n == 1)
     {
         int32_t raw;
@@ -214,8 +212,103 @@ bool pico_hx711_read_raw_stats_unsafe(struct PicoHX711 *hx, uint32_t n, float *m
 bool pico_hx711_read_raw_stats(struct PicoHX711 *hx, uint32_t n, float *mean,
                                float *stdev, uint32_t *resulting_n, uint32_t timeout_ms)
 {
-    mutex_enter_blocking(&hx->mux);
-    bool res = pico_hx711_read_raw_stats_unsafe(hx, n, mean, stdev, resulting_n, timeout_ms);
-    mutex_exit(&hx->mux);
+    bool res;
+    HX711_MUTEX_BLOCK(hx->mux,
+                      res = pico_hx711_read_raw_stats_unsafe(hx, n, mean, stdev, resulting_n, timeout_ms););
+    return res;
+}
+
+#include <stdio.h>
+#define sq(x) ((x) * (x))
+bool pico_hx711_read_calib_stats_unsafe(struct PicoHX711 *hx,
+                                        struct PicoHX711Calibration *calib,
+                                        uint32_t n, float *mean, float *stdev,
+                                        uint32_t *resulting_n, uint32_t timeout_ms)
+{
+    float raw_mean, raw_stdev;
+    if (!pico_hx711_read_raw_stats_unsafe(hx, n, &raw_mean, &raw_stdev, resulting_n, timeout_ms))
+        return false;
+
+    *mean = calib->slope * (raw_mean - calib->offset);
+    float r_minus_o = raw_mean - calib->offset;
+    *stdev = sqrt(sq(r_minus_o) * sq(calib->slope_e) +
+                  sq(calib->slope) * (sq(raw_stdev) + sq(calib->offset_e)));
+
+    return true;
+}
+
+bool pico_hx711_read_calib_stats(struct PicoHX711 *hx,
+                                 struct PicoHX711Calibration *calib,
+                                 uint32_t n, float *mean, float *stdev,
+                                 uint32_t *resulting_n, uint32_t timeout_ms)
+{
+    bool res;
+    HX711_MUTEX_BLOCK(hx->mux,
+                      res = pico_hx711_read_calib_stats_unsafe(hx, calib, n, mean, stdev,
+                                                               resulting_n, timeout_ms););
+    return res;
+}
+
+bool pico_hx711_calibrate_tare_unsafe(struct PicoHX711 *hx,
+                                      struct PicoHX711Calibration *calib, uint32_t n,
+                                      uint32_t *resulting_n, uint32_t timeout_ms)
+{
+    float raw_mean, raw_stdev;
+    if (!pico_hx711_read_raw_stats_unsafe(hx, n, &raw_mean, &raw_stdev, resulting_n, timeout_ms))
+        return false;
+
+    calib->offset = raw_mean;
+    calib->offset_e = raw_stdev;
+    calib->set_offset = true;
+
+    return true;
+}
+
+bool pico_hx711_calibrate_tare(struct PicoHX711 *hx,
+                               struct PicoHX711Calibration *calib, uint32_t n,
+                               uint32_t *resulting_n, uint32_t timeout_ms)
+{
+    bool res;
+    HX711_MUTEX_BLOCK(hx->mux,
+                      res = pico_hx711_calibrate_tare_unsafe(hx, calib, n, resulting_n, timeout_ms););
+    return res;
+}
+
+#ifdef abs
+#undef abs
+#endif
+#define abs(x) ((x) > 0 ? (x) : -(x))
+bool pico_hx711_calibrate_slope_unsafe(struct PicoHX711 *hx,
+                                       struct PicoHX711Calibration *calib,
+                                       uint32_t n, float weight, float weight_error,
+                                       uint32_t *resulting_n, uint32_t timeout_ms)
+{
+    if (!calib->set_offset)
+        return false;
+
+    float raw_mean, raw_stdev;
+    if (!pico_hx711_read_raw_stats_unsafe(hx, n, &raw_mean, &raw_stdev, resulting_n, timeout_ms))
+        return false;
+
+    calib->slope = weight / (raw_mean - calib->offset);
+
+    float diff = raw_mean - calib->offset;
+    float body = (weight / diff) * (sq(calib->offset_e) - sq(raw_stdev)) + sq(weight_error);
+    body = abs(body); // this shouldn't be necessary
+    calib->slope_e = sqrt(body / diff);
+    calib->set_slope = true;
+
+    return true;
+}
+
+bool pico_hx711_calibrate_slope(struct PicoHX711 *hx,
+                                struct PicoHX711Calibration *calib,
+                                uint32_t n, float weight, float weight_error,
+                                uint32_t *resulting_n, uint32_t timeout_ms)
+{
+    bool res;
+    HX711_MUTEX_BLOCK(hx->mux,
+                      res = pico_hx711_calibrate_slope_unsafe(hx, calib, n, weight, weight_error,
+                                                              resulting_n, timeout_ms););
     return res;
 }

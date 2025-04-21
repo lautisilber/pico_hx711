@@ -15,7 +15,7 @@ int main()
     stdio_init_all();
 
     sleep_ms(1000);
-    printf("hx711 demo init");
+    printf("hx711 demo init\n");
 
     const uint8_t mult_pins[N_MULT] = {
         HX711_MULT_1, HX711_MULT_2, HX711_MULT_3, HX711_MULT_4};
@@ -46,7 +46,7 @@ int main()
         {
             printf("n: %lu, mean: %f, stdev: %f, resulting_n: %lu", n, mean, stdev, resulting_n);
         }
-        printf("\n\n");
+        printf("\n");
         sleep_ms(1000);
     }
 }

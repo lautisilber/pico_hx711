@@ -28,17 +28,34 @@ int main()
     }
 
     struct PicoHX711 hx = {};
+    struct PicoHX711Calibration calib = 
+    {
+        .offset = -125777.421875,
+        .offset_e = 48.082111,
+        .slope = 0.000746,
+        .slope_e = 0.000739,
+        .set_offset = true,
+        .set_slope = true
+    };
     pico_hx711_begin(&hx, HX711_SCK, HX711_DT, A128, SPS_10);
 
     pico_hx711_power_on(&hx);
 
+    float mean, stdev;
+    uint32_t resulting_n;
     int32_t raw;
+    const uint32_t n = 10;
     bool s;
     for (;;)
     {
-        printf("hx711 raw: ");
-        s = pico_hx711_read_raw_single(&hx, &raw, 500);
-        printf("(%s) %li\n", (s ? "true" : "false"), raw);
+        printf("hx711 stats: ");
+        s = pico_hx711_read_calib_stats(&hx, &calib, n, &mean, &stdev, &resulting_n, 1000);
+        printf("(%s) ", (s ? "true" : "false"));
+        if (s)
+        {
+            printf("n: %lu, mean: %f, stdev: %f, resulting_n: %lu", n, mean, stdev, resulting_n);
+        }
+        printf("\n");
         sleep_ms(1000);
     }
 }

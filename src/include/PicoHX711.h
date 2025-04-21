@@ -35,7 +35,6 @@ extern "C"
 
         // internal
         mutex_t mux;
-        critical_section_t cs;
     };
 
     struct PicoHX711Calibration
@@ -71,6 +70,31 @@ extern "C"
                                                  uint32_t timeout_ms);
     extern bool pico_hx711_read_raw_stats(struct PicoHX711 *hx, uint32_t n, float *mean,
                                           float *stdev, uint32_t *resulting_n, uint32_t timeout_ms);
+
+    extern bool pico_hx711_read_calib_stats_unsafe(struct PicoHX711 *hx,
+                                                   struct PicoHX711Calibration *calib,
+                                                   uint32_t n, float *mean, float *stdev,
+                                                   uint32_t *resulting_n, uint32_t timeout_ms);
+    extern bool pico_hx711_read_calib_stats(struct PicoHX711 *hx,
+                                            struct PicoHX711Calibration *calib,
+                                            uint32_t n, float *mean, float *stdev,
+                                            uint32_t *resulting_n, uint32_t timeout_ms);
+
+    extern bool pico_hx711_calibrate_tare_unsafe(struct PicoHX711 *hx,
+                                                 struct PicoHX711Calibration *calib, uint32_t n,
+                                                 uint32_t *resulting_n, uint32_t timeout_ms);
+    extern bool pico_hx711_calibrate_tare(struct PicoHX711 *hx,
+                                          struct PicoHX711Calibration *calib, uint32_t n,
+                                          uint32_t *resulting_n, uint32_t timeout_ms);
+
+    extern bool pico_hx711_calibrate_slope_unsafe(struct PicoHX711 *hx,
+                                                  struct PicoHX711Calibration *calib,
+                                                  uint32_t n, float weight, float weight_error,
+                                                  uint32_t *resulting_n, uint32_t timeout_ms);
+    extern bool pico_hx711_calibrate_slope(struct PicoHX711 *hx,
+                                           struct PicoHX711Calibration *calib,
+                                           uint32_t n, float weight, float weight_error,
+                                           uint32_t *resulting_n, uint32_t timeout_ms);
 
 #ifdef __cplusplus
 }

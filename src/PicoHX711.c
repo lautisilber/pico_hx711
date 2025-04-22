@@ -16,7 +16,7 @@ bool pico_hx711_is_calibration_populated(const struct PicoHX711Calibration *cali
 void pico_hx711_begin(struct PicoHX711 *hx, uint8_t pin_clock, uint8_t pin_data,
                       enum PicoHX711Gain gain, enum PicoHX711Rate rate)
 {
-    if (!mutex_is_initialized(&hx->mux)) return;
+    if (mutex_is_initialized(&hx->mux)) return;
     mutex_init(&hx->mux);
 
     HX711_MUTEX_BLOCK(hx->mux,
